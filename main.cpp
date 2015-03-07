@@ -27,12 +27,13 @@
 
 
 DigitalOut myled(LED1);
-DigitalOut myled2(LED3);
+DigitalOut myled2(LED2);
 
 I2C i2c(p30,p7);
 
 void flashLED();
 float readTemp();
+uint16_t read(uint8_t, uint8_t, uint8_t);
 Serial pc(USBTX, USBRX);
 
 int main(){
@@ -68,26 +69,62 @@ void flashLED(){
 
 float readTemp(){
     uint16_t t = 0;
-    uint8_t checksum = 0;
-    i2c.start();
-    i2c.write(HTU21DF_I2CADDR);
-    i2c.write(HTU21DF_READTEMP);
-    
-    i2c.start();
-    i2c.write(HTU21DF_I2CADDR | 0x1);
-    t = i2c.read(1);
-    t <<= 8;
-    t |= i2c.read(1);
-    checksum = i2c.read(0);
-    
-    i2c.stop();
-    
+
+    //    i2c.start();
+    //     i2c.write(HTU21DF_I2CADDR);
+    //     i2c.write(HTU21DF_READTEMP);
+    //
+    //     i2c.start();
+    //     i2c.write(HTU21DF_I2CADDR | 0x1);
+    //     t = i2c.read(1);
+    //     t <<= 8;
+    //     t |= i2c.read(1);
+    //
+    //     checksum = i2c.read(0);
+    //
+    // i2c.stop();
+    t = read(HTU21DF_I2CADDR, HTU21DF_READTEMP, 3);
     float temp = t;
     temp *= 175.72;
     temp /= 65536;
     temp -= 46.85;
-    
-    checksum += 1;
+
 
     return temp;
+}
+
+float readHum(){
+	uint16_t h = 0;
+	h = read(HTU21DF_I2CADDR, HTU21DF_READHUM, 3);
+	float hum = h;
+	hum *= 125;
+	hum /=65536;
+	hum -= 6;
+	
+	return hum
+}
+
+uint16_t read(uint8_t i2c_address, uint8_t register_address, uint8_t length){
+    uint16_t val = 0;
+	uint8_t checksum = 0;
+    i2c.start();
+    i2c.write(i2c_address);
+    i2c.write(register_address);
+    i2c.start();
+    i2c.write(i2c_address | 0x1);
+    // for(int i = 0; i++; i< length-1){
+    //  val <<= 8;
+    //  val |= i2c.read(1);
+    // }
+    val = i2c.read(1);
+    val <<= 8;
+    val |= i2c.read(1);
+	checksum = i2c.read(0);
+	
+	/*
+		check the checksum, if incorrect, read again
+		http://www.barrgroup.com/Embedded-Systems/How-To/CRC-Calculation-C-Code
+	*/
+    i2c.stop();
+    return val;
 }
